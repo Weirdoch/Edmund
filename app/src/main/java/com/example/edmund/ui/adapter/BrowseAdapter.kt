@@ -1,14 +1,16 @@
 package com.example.edmund.ui.adapter
 
+import android.annotation.SuppressLint
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.documentfile.provider.DocumentFile
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.example.edmund.databinding.ItemFileBinding
 import java.io.File
 
-class BrowseAdapter(private val onFileSelected: (File) -> Unit) : ListAdapter<File, BrowseAdapter.FileViewHolder>(FileDiffCallback()) {
+class BrowseAdapter(private val onFileSelected: (DocumentFile) -> Unit) : ListAdapter<DocumentFile, BrowseAdapter.FileViewHolder>(FileDiffCallback()) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): FileViewHolder {
         val binding = ItemFileBinding.inflate(LayoutInflater.from(parent.context), parent, false)
@@ -17,30 +19,33 @@ class BrowseAdapter(private val onFileSelected: (File) -> Unit) : ListAdapter<Fi
 
     override fun onBindViewHolder(holder: FileViewHolder, position: Int) {
         val file = getItem(position)
-        holder.run {
-            bind(file = file)
-        }
+        holder.bind(file)
     }
 
     inner class FileViewHolder(private val binding: ItemFileBinding) : RecyclerView.ViewHolder(binding.root) {
-        fun bind(file: File) {
+        fun bind(file: DocumentFile) {
+            // 显示文件名
             binding.fileName.text = file.name
+
+            // 根据文件类型设置检查框的状态
             binding.checkBox.setOnCheckedChangeListener { _, isChecked ->
                 if (isChecked) {
-                    onFileSelected(file)
+                    onFileSelected(file)  // 文件被选中
                 } else {
-                    onFileSelected(file)
+                    onFileSelected(file)  // 文件被取消选择
                 }
             }
         }
     }
 
-    class FileDiffCallback : DiffUtil.ItemCallback<File>() {
-        override fun areItemsTheSame(oldItem: File, newItem: File): Boolean {
-            return oldItem.absolutePath == newItem.absolutePath
+    // 用 DiffUtil 优化列表更新
+    class FileDiffCallback : DiffUtil.ItemCallback<DocumentFile>() {
+        override fun areItemsTheSame(oldItem: DocumentFile, newItem: DocumentFile): Boolean {
+            return oldItem.uri == newItem.uri  // 比较 URI 判断是否为同一文件
         }
 
-        override fun areContentsTheSame(oldItem: File, newItem: File): Boolean {
+        @SuppressLint("DiffUtilEquals")
+        override fun areContentsTheSame(oldItem: DocumentFile, newItem: DocumentFile): Boolean {
             return oldItem == newItem
         }
     }
