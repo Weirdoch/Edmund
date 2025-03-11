@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">Edmund</string>
+    <string name="cancel">取消</string>
+    <string name="library_screen">书库</string>
+    <string name="history_screen">历史</string>
+    <string name="browse_screen">浏览</string>
+    <string name="about_app">关于 app</string>
+    <string name="reading_tab">正在阅读</string>
+    <string name="already_read_tab">已阅读</string>
+    <string name="dropped_tab">已放弃</string>
+    <string name="planning_tab">计划中</string>
+    <string name="search">搜索</string>
+    <string name="delete">删除</string>
+    <string name="filter">过滤</string>
+</resources>

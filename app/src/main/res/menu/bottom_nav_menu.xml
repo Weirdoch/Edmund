@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/nav_library"
+        android:icon="@drawable/browse_screen_outlined"
+        android:title="@string/library_screen" />
+
+    <item
+        android:id="@+id/nav_history"
+        android:icon="@drawable/history_screen_outlined"
+        android:title="@string/history_screen" />
+
+    <item
+        android:id="@+id/nav_browse"
+        android:icon="@drawable/browse_screen_outlined"
+        android:title="@string/browse_screen" />
+
+</menu>
