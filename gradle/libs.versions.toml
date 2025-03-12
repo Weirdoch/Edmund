@@ -1,6 +1,6 @@
 [versions]
 agp = "8.8.0"
-kotlin = "2.1.0" #"1.9.24"
+kotlin = "2.1.10" #"1.9.24"
 coreKtx = "1.10.1"
 junit = "4.14-SNAPSHOT"
 junitVersion = "1.1.5"
@@ -13,6 +13,8 @@ roomCommon = "2.6.1"
 pdfiumAndroid = "1.9.0"
 roomKtx = "2.6.1"
 roomRuntimeJvm = "2.7.0-rc01"
+koin_version = "1.7.0"
+swiperefreshlayout = "1.1.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -27,6 +29,7 @@ androidx-room-common = { group = "androidx.room", name = "room-common", version.
 pdfium-android = { group = "com.github.barteksc", name = "pdfium-android", version.ref = "pdfiumAndroid" }
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "roomKtx" }
 androidx-room-runtime-jvm = { group = "androidx.room", name = "room-runtime-jvm", version.ref = "roomRuntimeJvm" }
+androidx-swiperefreshlayout = { group = "androidx.swiperefreshlayout", name = "swiperefreshlayout", version.ref = "swiperefreshlayout" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

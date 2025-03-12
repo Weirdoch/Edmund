@@ -2,7 +2,8 @@ package com.example.edmund.data.dto
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import java.util.Locale
+import com.example.edmund.domain.library.Category
+import java.io.Serializable
 
 @Entity
 data class BookEntity(
@@ -15,5 +16,5 @@ data class BookEntity(
     val scrollOffset: Int,
     val progress: Float,
     val image: String? = null,
-    val category: Locale.Category
-)
+    val category: Category
+) : Serializable

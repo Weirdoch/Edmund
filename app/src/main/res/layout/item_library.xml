@@ -13,14 +13,44 @@
         android:scaleType="centerCrop"
         android:src="@drawable/ic_launcher_background"/>
 
-    <TextView
-        android:id="@+id/textView"
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
-        android:maxLines="1"
-        android:text="Book Title"
-        android:textSize="16sp"/>
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/book_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:maxLines="1"
+            android:text="Book Title"
+            android:textSize="16sp"/>
+
+        <TextView
+            android:id="@+id/book_author"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:layout_marginTop="8dp"
+            android:maxLines="1"
+            android:text="Book Author"
+            android:textSize="12sp"/>
+
+        <TextView
+            android:id="@+id/book_progress"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:layout_marginTop="8dp"
+            android:maxLines="1"
+            android:text="Book Progress"
+            android:textSize="12sp"/>
+
+    </LinearLayout>
+
+
 </androidx.cardview.widget.CardView>
 
 

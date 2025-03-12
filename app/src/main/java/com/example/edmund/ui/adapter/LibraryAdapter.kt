@@ -5,9 +5,17 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.example.edmund.data.dto.BookEntity
 import com.example.edmund.databinding.ItemLibraryBinding
 
-class LibraryAdapter : ListAdapter<String, LibraryAdapter.LibraryViewHolder>(DiffCallback()) {
+class LibraryAdapter : ListAdapter<BookEntity, LibraryAdapter.LibraryViewHolder>(BookEntityDiffCallback()) {
+
+    private var onItemClickListener: ((BookEntity) -> Unit)? = null
+
+    // 设置点击事件监听器
+    fun setOnItemClickListener(listener: (BookEntity) -> Unit) {
+        onItemClickListener = listener
+    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): LibraryViewHolder {
         val binding = ItemLibraryBinding.inflate(LayoutInflater.from(parent.context), parent, false)
@@ -19,19 +27,24 @@ class LibraryAdapter : ListAdapter<String, LibraryAdapter.LibraryViewHolder>(Dif
         holder.bind(book)
     }
 
-    class LibraryViewHolder(private val binding: ItemLibraryBinding) : RecyclerView.ViewHolder(binding.root) {
+    inner class LibraryViewHolder(private val binding: ItemLibraryBinding) : RecyclerView.ViewHolder(binding.root) {
+        fun bind(book: BookEntity) {
+            binding.bookTitle.text = book.title
+            binding.bookAuthor.text = book.author ?: "未知作者"
 
-        fun bind(book: String) {
-            binding.textView.text = book
+            // 设置点击事件
+            binding.root.setOnClickListener {
+                onItemClickListener?.invoke(book)
+            }
         }
     }
 
-    class DiffCallback : DiffUtil.ItemCallback<String>() {
-        override fun areItemsTheSame(oldItem: String, newItem: String): Boolean {
-            return oldItem == newItem
+    class BookEntityDiffCallback : DiffUtil.ItemCallback<BookEntity>() {
+        override fun areItemsTheSame(oldItem: BookEntity, newItem: BookEntity): Boolean {
+            return oldItem.id == newItem.id
         }
 
-        override fun areContentsTheSame(oldItem: String, newItem: String): Boolean {
+        override fun areContentsTheSame(oldItem: BookEntity, newItem: BookEntity): Boolean {
             return oldItem == newItem
         }
     }

@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     id("com.google.devtools.ksp")
+    id("com.google.dagger.hilt.android")
 }
 
 android {
@@ -35,6 +36,12 @@ android {
         jvmTarget = "11"
     }
     viewBinding.enable = true
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "/META-INF/gradle/incremental.annotation.processors"
+        }
+    }
 }
 
 dependencies {
@@ -46,6 +53,7 @@ dependencies {
     implementation(libs.androidx.constraintlayout)
 //    implementation(libs.androidx.room.common)
     implementation(libs.androidx.room.ktx)
+    implementation(libs.androidx.swiperefreshlayout)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -59,5 +67,15 @@ dependencies {
     //implementation("com.github.barteksc:android-pdf-viewer:3.2.0-beta.1") // 确保使用正确的版本
 
     implementation(libs.pdfium.android)
+    implementation("com.github.barteksc:android-pdf-viewer:3.2.0-beta.1") // 确保使用正确的版本
+
+    // Dagger - Hilt
+    implementation("com.google.dagger:hilt-android:2.55")
+    implementation("androidx.compose.ui:ui-tooling-preview-android:1.7.8")
+    ksp("com.google.dagger:hilt-android-compiler:2.55")
+    implementation("com.google.dagger:hilt-compiler:2.55")
+    ksp("androidx.hilt:hilt-compiler:1.2.0")
+    implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
+
 
 }

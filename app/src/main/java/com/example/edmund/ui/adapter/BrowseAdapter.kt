@@ -35,6 +35,7 @@ class BrowseAdapter(private val onFileSelected: (DocumentFile) -> Unit) : ListAd
                     onFileSelected(file)  // 文件被取消选择
                 }
             }
+
         }
     }
 

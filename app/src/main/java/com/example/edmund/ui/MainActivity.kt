@@ -6,7 +6,10 @@ import androidx.viewpager2.widget.ViewPager2
 import com.example.edmund.R
 import com.example.edmund.databinding.ActivityMainBinding
 import com.example.edmund.ui.adapter.ScreenAdapter
+import dagger.hilt.android.AndroidEntryPoint
 
+
+@AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding  // 声明 ViewBinding 对象
