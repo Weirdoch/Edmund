@@ -5,6 +5,8 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -22,118 +24,125 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-
 class LibraryFragment : Fragment() {
 
     private lateinit var binding: LibraryScreenBinding
     private lateinit var recyclerViewAdapter: LibraryAdapter
-    private lateinit var recyclerView: RecyclerView
     private lateinit var bookDao: BookDao
     private lateinit var swipeRefreshLayout: SwipeRefreshLayout
 
-    private val readingBooks = mutableListOf<BookEntity>()  // 正在阅读的书籍
-    private val alreadyReadBooks = mutableListOf<BookEntity>()  // 已读书籍
-    private val planningBooks = mutableListOf<BookEntity>()  // 计划中的书籍
-    private val droppedBooks = mutableListOf<BookEntity>()  // 丢弃的书籍
+    private val bookCategories = mutableMapOf<Category, MutableList<BookEntity>>()  // 使用map存储不同类别的书籍
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        // 绑定布局文件
         binding = LibraryScreenBinding.inflate(inflater, container, false)
         val rootView = binding.root
 
-        // 获取数据库实例
+        // 初始化数据库和RecyclerView
         val db = context?.let { DatabaseHelper.getDatabase(it) }
-        if (db != null) {
-            bookDao = db.bookDao
-        }
+        db?.let { bookDao = it.bookDao }
+        initRecyclerView()
 
-        // 初始化 RecyclerView
-        recyclerView = binding.libraryList
-        recyclerViewAdapter = LibraryAdapter()
-        recyclerView.adapter = recyclerViewAdapter
-        recyclerView.layoutManager = GridLayoutManager(context, 5, GridLayoutManager.VERTICAL, false)
-
-        swipeRefreshLayout = binding.swipeRefreshLayout
-
-        // 从数据库加载数据
+        // 加载并更新书籍
         loadBooksFromDatabase()
 
-        // 设置点击事件监听
-        // 设置点击事件监听
-        recyclerViewAdapter.setOnItemClickListener { book ->
-            // 跳转到 PDF 阅读 Activity
-            val intent = Intent(requireContext(), ReadActivity::class.java)
-            intent.putExtra("book", book)  // 传递书籍对象
-            startActivity(intent)
-        }
-
-        // 设置 TabLayout 的监听器
-        binding.tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
-            override fun onTabSelected(tab: TabLayout.Tab?) {
-                tab?.let {
-                    when (it.position) {
-                        0 -> updateRecyclerView(readingBooks)  // 阅读中的书籍
-                        1 -> updateRecyclerView(alreadyReadBooks)  // 已读书籍
-                        2 -> updateRecyclerView(planningBooks)  // 计划中的书籍
-                        3 -> updateRecyclerView(droppedBooks)  // 丢弃的书籍
-                    }
-                }
-            }
-
-            override fun onTabUnselected(tab: TabLayout.Tab?) {
-                // 可以在此做一些清理操作，暂时不做处理
-            }
-
-            override fun onTabReselected(tab: TabLayout.Tab?) {
-                // 当重新选择已经选中的 Tab 时，可以不做任何操作
-            }
-        })
-
-        swipeRefreshLayout.setOnRefreshListener {
-            // 执行刷新操作
-            loadBooksFromDatabase()  // 刷新数据
-        }
+        // 设置TabLayout和下拉刷新
+        setupTabLayout()
+        setupSwipeRefreshLayout()
 
         return rootView
     }
 
-    private fun loadBooksFromDatabase() {
-        CoroutineScope(Dispatchers.IO).launch {
-            // 从数据库中获取各状态的书籍
-            readingBooks.clear()
-            alreadyReadBooks.clear()
-            planningBooks.clear()
-            droppedBooks.clear()
+    private fun initRecyclerView() {
+        recyclerViewAdapter = LibraryAdapter().apply {
+            setOnItemClickListener { book -> startReadActivity(book) }
+            setOnItemLongClickListener { book, position -> showItemOptionsDialog(book, position) }
+        }
+        binding.libraryList.apply {
+            adapter = recyclerViewAdapter
+            layoutManager = GridLayoutManager(context, 5)
+        }
+    }
 
-            val books = bookDao.getAllBooks()  // 获取所有书籍
-            for (book in books) {
-                when (book.category) {
-                    Category.READING -> readingBooks.add(book)
-                    Category.ALREADY_READ -> alreadyReadBooks.add(book)
-                    Category.PLANNING -> planningBooks.add(book)
-                    Category.DROPPED -> droppedBooks.add(book)
-                }
+    private fun setupTabLayout() {
+        binding.tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: TabLayout.Tab?) {
+                tab?.let { updateRecyclerViewByTab(it.position) }
             }
 
-            // 更新 UI
+            override fun onTabUnselected(tab: TabLayout.Tab?) {}
+            override fun onTabReselected(tab: TabLayout.Tab?) {}
+        })
+    }
+
+    private fun setupSwipeRefreshLayout() {
+        swipeRefreshLayout = binding.swipeRefreshLayout
+        swipeRefreshLayout.setOnRefreshListener {
+            swipeRefreshLayout.isRefreshing = true
+            loadBooksFromDatabase()
+            updateRecyclerViewByTab(binding.tabLayout.selectedTabPosition)
+            swipeRefreshLayout.isRefreshing = false
+        }
+    }
+
+    private fun loadBooksFromDatabase() {
+        CoroutineScope(Dispatchers.IO).launch {
+            bookCategories.clear()  // 清空之前的书籍数据
+            val books = bookDao.getAllBooks()
+            books.forEach { book ->
+                bookCategories.getOrPut(book.category) { mutableListOf() }.add(book)
+            }
             withContext(Dispatchers.Main) {
-                //根据tab展示对应书籍列表
-                when (binding.tabLayout.selectedTabPosition) {
-                    0 -> updateRecyclerView(readingBooks)  // 阅读中的书籍
-                    1 -> updateRecyclerView(alreadyReadBooks)  // 已读书籍
-                    2 -> updateRecyclerView(planningBooks)  // 计划中的书籍
-                    3 -> updateRecyclerView(droppedBooks)  // 丢弃的书籍
-                }
-                swipeRefreshLayout.isRefreshing = false
+                updateRecyclerViewByTab(binding.tabLayout.selectedTabPosition)  // 切换选中的tab更新RecyclerView
             }
         }
     }
 
-    private fun updateRecyclerView(data: List<BookEntity>) {
-        // 更新 RecyclerView 的数据
-        recyclerViewAdapter.submitList(data)
+    private fun updateRecyclerViewByTab(tabPosition: Int) {
+        val selectedCategory = Category.values()[tabPosition]  // 根据tab的位置选择对应的书籍类别
+        val books = bookCategories[selectedCategory] ?: emptyList()
+        recyclerViewAdapter.submitList(books)
+    }
+
+    private fun startReadActivity(book: BookEntity) {
+        val intent = Intent(requireContext(), ReadActivity::class.java).apply {
+            putExtra("book", book)
+        }
+        startActivity(intent)
+    }
+
+    private fun showItemOptionsDialog(book: BookEntity, position: Int) {
+        val options = arrayOf("移动", "删除")
+        AlertDialog.Builder(requireContext())
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> moveBook(book, position)
+                    1 -> deleteBook(book, position)
+                }
+            }.show()
+    }
+
+    private fun deleteBook(book: BookEntity, position: Int) {
+        CoroutineScope(Dispatchers.IO).launch {
+            bookDao.deleteBook(book)  // 从数据库删除书籍
+            withContext(Dispatchers.Main) {
+                recyclerViewAdapter.removeBook(position)  // 更新UI
+                Toast.makeText(requireContext(), "书籍已删除", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun moveBook(book: BookEntity, position: Int) {
+        val newCategory = Category.ALREADY_READ  // 将书籍移动到已读分类
+        book.category = newCategory
+        CoroutineScope(Dispatchers.IO).launch {
+            bookDao.updateBook(book)  // 更新数据库中的书籍
+            withContext(Dispatchers.Main) {
+                recyclerViewAdapter.removeBook(position)  // 更新UI
+                Toast.makeText(requireContext(), "书籍已移动到 $newCategory", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 }

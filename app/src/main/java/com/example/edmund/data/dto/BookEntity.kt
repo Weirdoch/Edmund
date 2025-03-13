@@ -16,5 +16,5 @@ data class BookEntity(
     val scrollOffset: Int,
     val progress: Float,
     val image: String? = null,
-    val category: Category
+    var category: Category
 ) : Serializable

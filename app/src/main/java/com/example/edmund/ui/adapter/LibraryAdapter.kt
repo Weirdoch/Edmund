@@ -11,10 +11,14 @@ import com.example.edmund.databinding.ItemLibraryBinding
 class LibraryAdapter : ListAdapter<BookEntity, LibraryAdapter.LibraryViewHolder>(BookEntityDiffCallback()) {
 
     private var onItemClickListener: ((BookEntity) -> Unit)? = null
+    private var onItemLongClickListener: ((BookEntity, Int) -> Unit)? = null
 
-    // 设置点击事件监听器
     fun setOnItemClickListener(listener: (BookEntity) -> Unit) {
         onItemClickListener = listener
+    }
+
+    fun setOnItemLongClickListener(listener: (BookEntity, Int) -> Unit) {
+        onItemLongClickListener = listener
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): LibraryViewHolder {
@@ -24,17 +28,21 @@ class LibraryAdapter : ListAdapter<BookEntity, LibraryAdapter.LibraryViewHolder>
 
     override fun onBindViewHolder(holder: LibraryViewHolder, position: Int) {
         val book = getItem(position)
-        holder.bind(book)
+        holder.bind(book, position)
     }
 
     inner class LibraryViewHolder(private val binding: ItemLibraryBinding) : RecyclerView.ViewHolder(binding.root) {
-        fun bind(book: BookEntity) {
+        fun bind(book: BookEntity, position: Int) {
             binding.bookTitle.text = book.title
             binding.bookAuthor.text = book.author ?: "未知作者"
 
-            // 设置点击事件
             binding.root.setOnClickListener {
                 onItemClickListener?.invoke(book)
+            }
+
+            binding.root.setOnLongClickListener {
+                onItemLongClickListener?.invoke(book, adapterPosition)
+                true
             }
         }
     }
@@ -48,4 +56,23 @@ class LibraryAdapter : ListAdapter<BookEntity, LibraryAdapter.LibraryViewHolder>
             return oldItem == newItem
         }
     }
+
+    // 管理书籍列表的辅助函数
+    fun addBooks(newBooks: List<BookEntity>) {
+        val currentList = currentList.toMutableList()
+        currentList.addAll(newBooks)
+        submitList(currentList)
+    }
+
+    fun removeBook(position: Int) {
+        val currentList = currentList.toMutableList()
+        currentList.removeAt(position)
+        submitList(currentList)
+    }
+
+//    fun updateBook(position: Int, book: BookEntity) {
+//        val currentList = currentList.toMutableList()
+//        currentList[position] = book
+//        submitList(currentList)
+//    }
 }

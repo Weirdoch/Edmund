@@ -77,5 +77,7 @@ dependencies {
     ksp("androidx.hilt:hilt-compiler:1.2.0")
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
 
-
+// https://mvnrepository.com/artifact/nl.siegmann.epublib/epublib-core
+//    implementation("nl.siegmann.epublib:epublib-core:3.0")
+//    implementation("com.github.bbokhy:epub3-android:1.0.0")
 }
