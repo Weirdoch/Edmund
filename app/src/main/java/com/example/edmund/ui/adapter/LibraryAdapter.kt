@@ -57,22 +57,4 @@ class LibraryAdapter : ListAdapter<BookEntity, LibraryAdapter.LibraryViewHolder>
         }
     }
 
-    // 管理书籍列表的辅助函数
-    fun addBooks(newBooks: List<BookEntity>) {
-        val currentList = currentList.toMutableList()
-        currentList.addAll(newBooks)
-        submitList(currentList)
-    }
-
-    fun removeBook(position: Int) {
-        val currentList = currentList.toMutableList()
-        currentList.removeAt(position)
-        submitList(currentList)
-    }
-
-//    fun updateBook(position: Int, book: BookEntity) {
-//        val currentList = currentList.toMutableList()
-//        currentList[position] = book
-//        submitList(currentList)
-//    }
 }

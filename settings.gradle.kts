@@ -22,6 +22,9 @@ dependencyResolutionManagement {
         maven {
             url = uri("https://maven.aliyun.com/repository/public")
         }
+        maven {
+            url = uri("https://github.com/psiegman/mvn-repo/raw/master/releases")
+        }
     }
 }
 

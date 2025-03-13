@@ -101,7 +101,7 @@ class LibraryFragment : Fragment() {
     }
 
     private fun updateRecyclerViewByTab(tabPosition: Int) {
-        val selectedCategory = Category.values()[tabPosition]  // 根据tab的位置选择对应的书籍类别
+        val selectedCategory = Category.entries[tabPosition]  // 根据tab的位置选择对应的书籍类别
         val books = bookCategories[selectedCategory] ?: emptyList()
         recyclerViewAdapter.submitList(books)
     }
@@ -128,7 +128,8 @@ class LibraryFragment : Fragment() {
         CoroutineScope(Dispatchers.IO).launch {
             bookDao.deleteBook(book)  // 从数据库删除书籍
             withContext(Dispatchers.Main) {
-                recyclerViewAdapter.removeBook(position)  // 更新UI
+                bookCategories[book.category]?.remove(book)
+                recyclerViewAdapter.notifyItemRemoved(position)
                 Toast.makeText(requireContext(), "书籍已删除", Toast.LENGTH_SHORT).show()
             }
         }
@@ -136,11 +137,14 @@ class LibraryFragment : Fragment() {
 
     private fun moveBook(book: BookEntity, position: Int) {
         val newCategory = Category.ALREADY_READ  // 将书籍移动到已读分类
+        val oldCategory = book.category
         book.category = newCategory
         CoroutineScope(Dispatchers.IO).launch {
             bookDao.updateBook(book)  // 更新数据库中的书籍
             withContext(Dispatchers.Main) {
-                recyclerViewAdapter.removeBook(position)  // 更新UI
+                bookCategories[oldCategory]?.remove(book)
+                bookCategories[newCategory]?.add(book)
+                recyclerViewAdapter.notifyItemRemoved(position)
                 Toast.makeText(requireContext(), "书籍已移动到 $newCategory", Toast.LENGTH_SHORT).show()
             }
         }

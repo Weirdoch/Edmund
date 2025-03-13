@@ -17,6 +17,8 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+//        multiDexEnabled = true
+
     }
 
     buildTypes {
@@ -42,6 +44,7 @@ android {
             excludes += "/META-INF/gradle/incremental.annotation.processors"
         }
     }
+
 }
 
 dependencies {
@@ -78,6 +81,11 @@ dependencies {
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
 
 // https://mvnrepository.com/artifact/nl.siegmann.epublib/epublib-core
-//    implementation("nl.siegmann.epublib:epublib-core:3.0")
+    implementation("nl.siegmann.epublib:epublib-core:3.1"){
+        exclude(group = "xmlpull", module = "xmlpull")
+    }
 //    implementation("com.github.bbokhy:epub3-android:1.0.0")
+//    implementation("com.folioreader:folioreader:0.5.4")
+
+    implementation("org.jsoup:jsoup:1.14.3")
 }
