@@ -17,6 +17,7 @@ import com.example.edmund.data.dto.BookEntity
 import com.example.edmund.data.room.BookDao
 import com.example.edmund.databinding.BrowseScreenBinding
 import com.example.edmund.data.room.DatabaseHelper
+import com.example.edmund.databinding.ItemFileBinding
 import com.example.edmund.domain.library.Category
 import com.example.edmund.domain.use_case.permission.GrantPersistableUriPermission
 import com.example.edmund.ui.adapter.BrowseAdapter
