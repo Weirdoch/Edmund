@@ -13,88 +13,94 @@ import org.jsoup.Jsoup
 import org.jsoup.select.Elements
 import java.io.InputStream
 
-object EpubParse{
+
+object EpubParse {
 
     private const val TAG = "EpubParseUtils"
 
-    // 解析 EPUB 文件，返回 Book 对象
-    fun parseEpub(inputStream: InputStream): Book? {
+    // 解析 EPUB 文件，返回 Book 对象，捕获异常并封装到 Result 中
+    fun parseEpub(inputStream: InputStream): Result<Book> {
         return try {
             val reader = EpubReader()
-            reader.readEpub(inputStream)  // 读取 EPUB 内容
+            val book = reader.readEpub(inputStream)
+            Result.success(book)
         } catch (e: Exception) {
-            e.printStackTrace()
-            null
+            Log.e(TAG, "Error parsing EPUB", e)
+            Result.failure(e)  // 失败时返回异常
         }
     }
 
     // 获取 EPUB 的元数据信息
-    fun getBookInfo(book: Book): String {
-        val metadata: Metadata = book.metadata
-        return """
-            作者：${metadata.authors[0]}
-            出版社：${metadata.publishers[0]}
-            出版时间：${metadata.dates[0].value}
-            书名：${metadata.titles[0]}
-            简介：${metadata.descriptions[0]}
-            语言：${metadata.language}
-        """.trimIndent()
+    fun getBookInfo(book: Book): String? {
+        return try {
+            val metadata: Metadata = book.metadata
+            """
+                作者：${metadata.authors.getOrNull(0) ?: "未知"}
+                出版社：${metadata.publishers.getOrNull(0) ?: "未知"}
+                出版时间：${metadata.dates.getOrNull(0)?.value ?: "未知"}
+                书名：${metadata.titles.getOrNull(0) ?: "未知"}
+                简介：${metadata.descriptions.getOrNull(0) ?: "暂无简介"}
+                语言：${metadata.language ?: "未知"}
+            """.trimIndent()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting book info", e)
+            null
+        }
     }
 
     // 获取封面图，如果没有封面图则返回 null
-    fun getCoverImage(book: Book): Bitmap? {
+    fun getCoverImage(book: Book): Result<Bitmap> {
         return try {
             val resources = book.resources
             val coverResource: Resource? = resources.getById("cover")
             coverResource?.let {
-                BitmapFactory.decodeStream(it.inputStream)
-            }
+                val bitmap = BitmapFactory.decodeStream(it.inputStream)
+                Result.success(bitmap)
+            } ?: Result.failure(IllegalArgumentException("No cover image found"))
         } catch (e: Exception) {
             Log.e(TAG, "Error getting cover image", e)
-            null
+            Result.failure(e)
         }
     }
 
     // 获取章节内容的 HTML
-    fun getChapterHtml(book: Book): String? {
+    fun getChapterHtml(book: Book, chapterIndex: Int): Result<String> {
         return try {
             val spine: Spine = book.spine
             val spineReferences = spine.spineReferences
-            if (spineReferences.isNotEmpty()) {
-                val resource: Resource = spineReferences[14].resource // 获取带章节信息的 HTML 页面
-                String(resource.data)
+            if (spineReferences.isNotEmpty() && chapterIndex in 0 until spineReferences.size) {
+                val resource: Resource = spineReferences[chapterIndex].resource
+                val htmlContent = String(resource.data)
+                Result.success(htmlContent)
             } else {
-                Log.w(TAG, "No chapters found in EPUB")
-                null
+                Result.failure(IllegalArgumentException("Invalid chapter index"))
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error getting chapter HTML", e)
-            null
+            Result.failure(e)
         }
     }
 
     // 解析 HTML 数据，提取所有链接
-    fun parseHtmlLinks(html: String): List<EpubBean> {
-        val epubBeans = mutableListOf<EpubBean>()
-        try {
+    fun parseHtmlLinks(html: String): Result<List<EpubBean>> {
+        return try {
             val doc = Jsoup.parse(html)
             val elements: Elements = doc.getElementsByTag("a") // 获取所有的 a 标签
-            for (link in elements) {
+            val epubBeans = elements.map { link ->
                 val linkHref = link.attr("href") // 获取 a 标签的 href 属性
                 val text = link.text()
-                val epubBean = EpubBean(linkHref, text)
-                epubBeans.add(epubBean)
-                Log.i(TAG, "parseHtmlData: linkHref=$linkHref text=$text")
+                EpubBean(linkHref, text)
             }
+            Result.success(epubBeans)
         } catch (e: Exception) {
             Log.e(TAG, "Error parsing HTML links", e)
+            Result.failure(e)
         }
-        return epubBeans
     }
 }
-
 
 data class EpubBean(
     val linkHref: String,
     val text: String
 )
+
