@@ -88,4 +88,5 @@ dependencies {
 //    implementation("com.folioreader:folioreader:0.5.4")
 
     implementation("org.jsoup:jsoup:1.14.3")
+//    implementation("com.artifex.mupdf:mupdf-android:1.19.0")
 }
