@@ -11,6 +11,8 @@ import android.os.Build
 import android.os.Bundle
 import android.os.ParcelFileDescriptor
 import android.util.Log
+import android.view.GestureDetector
+import android.view.MotionEvent
 import android.view.View
 import android.webkit.WebView
 import android.widget.Toast
@@ -18,6 +20,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.createBitmap
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.example.edmund.data.dto.BookEntity
@@ -25,14 +28,14 @@ import com.example.edmund.data.parse.EpubParse
 import com.example.edmund.data.parse.PdfCache
 import com.example.edmund.databinding.ActivityReadBinding
 import com.github.barteksc.pdfviewer.PDFView
-import com.github.barteksc.pdfviewer.util.FitPolicy
+import com.shockwave.pdfium.PdfDocument
 import com.shockwave.pdfium.PdfiumCore
 import dagger.hilt.android.AndroidEntryPoint
 import nl.siegmann.epublib.domain.Book
 import nl.siegmann.epublib.epub.EpubReader
 import java.io.IOException
 import java.io.InputStream
-import javax.inject.Inject
+import kotlin.math.abs
 
 @AndroidEntryPoint
 class ReadActivity : AppCompatActivity() {
@@ -42,15 +45,20 @@ class ReadActivity : AppCompatActivity() {
     private lateinit var inputStream: InputStream
     private lateinit var book: BookEntity
     private lateinit var pdfiumCore: PdfiumCore
-
-    private val htmlContent = StringBuilder() // 存储加载的 HTML 内容
-    private var currentPage = 0 // 当前加载到的章节索引
-
-    private lateinit var uri: Uri
-
-
     private val pdfCache = PdfCache()
 
+    private val htmlContent = StringBuilder() // 存储加载的 HTML 内容
+
+    private var currentPage = 0 // 当前加载到的章节索引
+    private val pageStep = 2
+
+    private lateinit var uri: Uri
+    private lateinit var pdfDocument: PdfDocument
+
+
+    private val gestureDetector: GestureDetector by lazy {
+        GestureDetector(this, GestureListener())
+    }
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -75,18 +83,12 @@ class ReadActivity : AppCompatActivity() {
         pdfiumCore = PdfiumCore(this)
 
 
-
-
         // 判断文件类型并加载
         if (book.filePath.endsWith(".pdf", ignoreCase = true)) {
-            // 加载 PDF 文件
-//            pdfView = binding.pdfView
-//            requestPermissions()
-//            pdfParse.loadPdf(binding, inputStream, pdfCache, applicationContext, uri)
-
-            binding.imageView.visibility = View.VISIBLE
+            binding.pdfView.visibility = View.VISIBLE
             binding.webView.visibility = View.GONE
-            renderPageAsBitmap(0)
+            pdfDocument = pdfiumCore.newDocument(getFileDescriptorFromUri(uri))
+            renderPages(currentPage)
         } else if (book.filePath.endsWith(".epub", ignoreCase = true)) {
             // 加载 EPUB 文件
             val loadedBook = loadEpub()
@@ -96,121 +98,118 @@ class ReadActivity : AppCompatActivity() {
         }
     }
 
-    private fun renderPageAsBitmap(pageIndex: Int) {
-        val fileDescriptorFromUri = getFileDescriptorFromUri(uri)
-        val document = pdfiumCore.newDocument(fileDescriptorFromUri)
-        Log.i("PDF", "PDF loaded, total pages: ${pdfiumCore.getPageCount(document)}")
+
+    override fun onDestroy() {
+        super.onDestroy()
         try {
-            pdfiumCore.openPage(document, 0)
-
-            val width = pdfiumCore.getPageWidth(document, 0)
-            val height = pdfiumCore.getPageHeight(document, 0)
-
-            // Create a Bitmap from the page
-            var createBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-            pdfiumCore.renderPageBitmap(document, createBitmap, 0, 0, 0, width, height)
-
-            // Optionally display the Bitmap in an ImageView
-            binding.imageView.setImageBitmap(createBitmap)
-
+            // 关闭 PDF 文档
+            pdfiumCore.closeDocument(pdfDocument)
         } catch (e: Exception) {
             e.printStackTrace()
         }
     }
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        // 让 GestureDetector 处理触摸事件
+        gestureDetector.onTouchEvent(event)
+        return super.onTouchEvent(event)
+    }
+
+    // 通过手势检测进行翻页
+    inner class GestureListener : GestureDetector.SimpleOnGestureListener() {
+
+        override fun onFling(
+            e1: MotionEvent?,
+            e2: MotionEvent,
+            velocityX: Float,
+            velocityY: Float
+        ): Boolean {
+            // 判断左右滑动的手势
+            if (e1 != null) {
+                if (abs(e2.x - e1.x) > 100 && abs(velocityX) > 1000) {
+                    // 如果是右滑动 (前一页)
+                    if (e2.x > e1.x) {
+                        previousPage()
+                    }
+                    // 如果是左滑动 (下一页)
+                    else {
+                        nextPage()
+                    }
+                    return true
+                }
+            }
+            return false
+        }
+
+    }
+
+    // 渲染当前页和下一页
+    private fun renderPages(pageIndex: Int) {
+        val imageView1 = binding.imageView1
+        val imageView2 = binding.imageView2
+        pdfiumCore.openPage(pdfDocument, pageIndex)
+        val width = pdfiumCore.getPageWidth(pdfDocument, pageIndex)
+        val height = pdfiumCore.getPageHeight(pdfDocument, pageIndex)
+        try {
+            // 获取并渲染第一页
+            var bitmap1 = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+            pdfiumCore.renderPageBitmap(pdfDocument, bitmap1, pageIndex, 0, 0, width, height)
+            imageView1.setImageBitmap(bitmap1)
+
+            // 获取并渲染第二页
+            if (pageIndex + 1 < pdfiumCore.getPageCount(pdfDocument)) {
+                pdfiumCore.openPage(pdfDocument, pageIndex + 1)
+                var bitmap2 = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+                pdfiumCore.renderPageBitmap(pdfDocument, bitmap2, pageIndex + 1, 0, 0, width, height)
+                imageView2.setImageBitmap(bitmap2)
+            } else {
+                imageView2.setImageBitmap(null) // 如果没有第二页，清除 ImageView
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    // 显示上一页
+    private fun previousPage() {
+        if (currentPage > 0) {
+            currentPage -= pageStep
+            if (currentPage < 0) currentPage = 0
+            renderPages(currentPage)
+        }
+    }
+
+    // 显示下一页
+    private fun nextPage() {
+        if (currentPage + pageStep < pdfiumCore.getPageCount(pdfDocument)) {
+            currentPage += pageStep
+            renderPages(currentPage)
+        }
+    }
+
 
     private fun getFileDescriptorFromUri(uri: Uri): ParcelFileDescriptor {
         val resolver: ContentResolver = contentResolver
         return resolver.openFileDescriptor(uri, "r") ?: throw IOException("Unable to open file descriptor for Uri: $uri")
     }
 
-    // 读写权限
-    private fun requestPermissions() {
-        if (checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
-            return
-        }
-        if (ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.READ_EXTERNAL_STORAGE
-            ) == PackageManager.PERMISSION_DENIED) {
-            ActivityCompat.requestPermissions(
-                this, arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE), 0
-            )
-        }
-    }
 
     private fun getInputStreamFromUri(uri: Uri): InputStream {
         val contentResolver: ContentResolver = applicationContext.contentResolver
         return contentResolver.openInputStream(uri)
             ?: throw IllegalArgumentException("Unable to open input stream from URI")
     }
-//
-//    private fun loadPdf() {
-//        binding.pdfView.visibility = View.VISIBLE
-//        binding.webView.visibility = View.GONE
-//
-//        pdfView.fromStream(inputStream)
-//            .enableSwipe(true)
-//            .swipeHorizontal(false)
-//            .enableDoubletap(true)
-//            .defaultPage(0)
-//            .onPageChange {
-//                    page, _ ->
-//                // 当前页面翻页时，缓存当前页和附近两页
-//                cacheAdjacentPages(page, inputStream, pdfCache)
-//
-//            }
-//            .onLoad { totalPages ->
-//                Log.d("PDF", "PDF loaded, total pages: $totalPages")
-//            }
-//            .onError {
-//                Log.e("PDF", "Error loading PDF")
-//                Toast.makeText(this, "Error loading PDF", Toast.LENGTH_SHORT).show()
-//            }
-//            .onPageError { page, t ->
-//                Log.e("PDF", "Error loading page $page", t)
-//            }
-//            .pageFitPolicy(FitPolicy.WIDTH)
-//            .load()
-//    }
-//
-//    fun loadPage(pageNumber: Int) {
-//        // 检查内存缓存
-//        var pageBitmap = pdfCache.getPage(pageNumber)
-//
-//
-//        if (pageBitmap == null) {
-//
-//            //PdfRenderer.openPage(inputStream, pageNumber)
-//            try {
-//                val fileDescriptor = getParcelFileDescriptorFromUri(this, Uri.parse(book.filePath))
-//                val renderer = PdfRenderer(fileDescriptor!!)
-//                val page = renderer.openPage(pageNumber)
-//                val bitmap = Bitmap.createBitmap(page.width, page.height, Bitmap.Config.ARGB_8888)
-//                page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-//                page.close()
-//                renderer.close()
-//                pageBitmap = bitmap
-//            } catch(e: Exception) {}
-//
-//            pageBitmap?.let {
-//                pdfCache.putPage(pageNumber, it)
-//            }
-//        }
-//    }
-//
-//    fun getParcelFileDescriptorFromUri(context: Context, uri: Uri): ParcelFileDescriptor? {
-//        return try {
-//            // 使用 ContentResolver 打开 Uri 并获取 ParcelFileDescriptor
-//            context.contentResolver.openFileDescriptor(uri, "r")  // "r" 表示只读模式
-//        } catch (e: IOException) {
-//            e.printStackTrace()
-//            null
-//        }
-//    }
+
+
+
+
+
+
+    //epub
 
 
     fun loadEpub(): Book? {
-        binding.imageView.visibility = View.GONE
+        binding.pdfView.visibility = View.GONE
         binding.webView.visibility = View.VISIBLE
 
         return try {
@@ -273,6 +272,22 @@ class ReadActivity : AppCompatActivity() {
             window.setDecorFitsSystemWindows(false)
         } else {
             window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+        }
+    }
+
+
+    // 读写权限
+    private fun requestPermissions() {
+        if (checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
+            return
+        }
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.READ_EXTERNAL_STORAGE
+            ) == PackageManager.PERMISSION_DENIED) {
+            ActivityCompat.requestPermissions(
+                this, arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE), 0
+            )
         }
     }
 }

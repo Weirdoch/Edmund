@@ -20,11 +20,35 @@
 <!--        android:layout_gravity="center"-->
 <!--        android:visibility="gone"/>-->
 
-    <ImageView
+<!--    <ImageView-->
+<!--        android:layout_width="match_parent"-->
+<!--        android:layout_height="match_parent"-->
+<!--        android:visibility="gone"-->
+<!--        android:id="@+id/imageView"/>-->
+
+    <LinearLayout
+        android:id="@+id/pdfView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:visibility="gone"
-        android:id="@+id/imageView"/>
+        android:visibility="gone">
+
+        <ImageView
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:id="@+id/imageView1"
+            android:scaleType="fitXY"
+            android:adjustViewBounds="true" />
+
+        <ImageView
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:id="@+id/imageView2"
+            android:scaleType="fitXY"
+            android:adjustViewBounds="true" />
+
+    </LinearLayout>
 
     <com.example.edmund.widget.CustomWebView
         android:id="@+id/webView"
