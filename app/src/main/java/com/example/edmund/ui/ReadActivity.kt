@@ -2,10 +2,6 @@ package com.example.edmund.ui
 
 import android.Manifest
 import android.content.ContentResolver
-import android.content.Context
-import android.content.pm.PackageManager
-import android.graphics.Bitmap
-import android.graphics.pdf.PdfRenderer
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -15,22 +11,18 @@ import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.View
 import android.webkit.WebView
-import android.widget.Toast
-import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
-import androidx.core.graphics.createBitmap
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
 import com.example.edmund.data.dto.BookEntity
-import com.example.edmund.data.parse.EpubParse
-import com.example.edmund.data.parse.PdfCache
+import com.example.edmund.data.parse.PdfCacheManager
 import com.example.edmund.databinding.ActivityReadBinding
 import com.github.barteksc.pdfviewer.PDFView
 import com.shockwave.pdfium.PdfDocument
 import com.shockwave.pdfium.PdfiumCore
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import nl.siegmann.epublib.domain.Book
 import nl.siegmann.epublib.epub.EpubReader
 import java.io.IOException
@@ -45,7 +37,7 @@ class ReadActivity : AppCompatActivity() {
     private lateinit var inputStream: InputStream
     private lateinit var book: BookEntity
     private lateinit var pdfiumCore: PdfiumCore
-    private val pdfCache = PdfCache()
+    private val pdfCacheManager = PdfCacheManager()
 
     private val htmlContent = StringBuilder() // 存储加载的 HTML 内容
 
@@ -55,11 +47,12 @@ class ReadActivity : AppCompatActivity() {
     private lateinit var uri: Uri
     private lateinit var pdfDocument: PdfDocument
 
+    private var width = 0
+    private var height = 0
 
     private val gestureDetector: GestureDetector by lazy {
         GestureDetector(this, GestureListener())
     }
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -67,27 +60,21 @@ class ReadActivity : AppCompatActivity() {
         enableEdgeToEdge()
         setContentView(binding.root)
 
-        // 设置边缘到边缘适配
-        ViewCompat.setOnApplyWindowInsetsListener(binding.main) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-            insets
-        }
-
         // 获取传递过来的书籍信息
         book = intent.getSerializableExtra("book") as BookEntity
         uri = Uri.parse(book.filePath) // 获取传递的 content:// URI
         inputStream = getInputStreamFromUri(uri)
 
-
         pdfiumCore = PdfiumCore(this)
-
 
         // 判断文件类型并加载
         if (book.filePath.endsWith(".pdf", ignoreCase = true)) {
             binding.pdfView.visibility = View.VISIBLE
             binding.webView.visibility = View.GONE
             pdfDocument = pdfiumCore.newDocument(getFileDescriptorFromUri(uri))
+            pdfiumCore.openPage(pdfDocument, 0)
+            width = pdfiumCore.getPageWidth(pdfDocument, 0)
+            height = pdfiumCore.getPageHeight(pdfDocument, 0)
             renderPages(currentPage)
         } else if (book.filePath.endsWith(".epub", ignoreCase = true)) {
             // 加载 EPUB 文件
@@ -97,7 +84,6 @@ class ReadActivity : AppCompatActivity() {
             }
         }
     }
-
 
     override fun onDestroy() {
         super.onDestroy()
@@ -147,26 +133,28 @@ class ReadActivity : AppCompatActivity() {
     private fun renderPages(pageIndex: Int) {
         val imageView1 = binding.imageView1
         val imageView2 = binding.imageView2
-        pdfiumCore.openPage(pdfDocument, pageIndex)
-        val width = pdfiumCore.getPageWidth(pdfDocument, pageIndex)
-        val height = pdfiumCore.getPageHeight(pdfDocument, pageIndex)
-        try {
-            // 获取并渲染第一页
-            var bitmap1 = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-            pdfiumCore.renderPageBitmap(pdfDocument, bitmap1, pageIndex, 0, 0, width, height)
-            imageView1.setImageBitmap(bitmap1)
 
-            // 获取并渲染第二页
-            if (pageIndex + 1 < pdfiumCore.getPageCount(pdfDocument)) {
-                pdfiumCore.openPage(pdfDocument, pageIndex + 1)
-                var bitmap2 = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-                pdfiumCore.renderPageBitmap(pdfDocument, bitmap2, pageIndex + 1, 0, 0, width, height)
-                imageView2.setImageBitmap(bitmap2)
-            } else {
-                imageView2.setImageBitmap(null) // 如果没有第二页，清除 ImageView
+        // 异步渲染页面，避免阻塞 UI 线程
+        GlobalScope.launch(Dispatchers.IO) {
+            try {
+
+                val bitmap1 = pdfCacheManager.getPageBitmap(pdfiumCore, pdfDocument, pageIndex, width, height)
+
+                withContext(Dispatchers.Main) {
+                    imageView1.setImageBitmap(bitmap1)
+
+                    // 渲染下一页
+                    if (pageIndex + 1 < pdfiumCore.getPageCount(pdfDocument)) {
+                        val bitmap2 = pdfCacheManager.getPageBitmap(pdfiumCore, pdfDocument, pageIndex + 1, width, height)
+                        kotlin.run { pdfCacheManager.cacheAdjacentPages(pageIndex, pdfiumCore, pdfDocument, width, height) }
+                        imageView2.setImageBitmap(bitmap2)
+                    } else {
+                        imageView2.setImageBitmap(null)
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
         }
     }
 
@@ -187,12 +175,10 @@ class ReadActivity : AppCompatActivity() {
         }
     }
 
-
     private fun getFileDescriptorFromUri(uri: Uri): ParcelFileDescriptor {
         val resolver: ContentResolver = contentResolver
         return resolver.openFileDescriptor(uri, "r") ?: throw IOException("Unable to open file descriptor for Uri: $uri")
     }
-
 
     private fun getInputStreamFromUri(uri: Uri): InputStream {
         val contentResolver: ContentResolver = applicationContext.contentResolver
@@ -200,14 +186,7 @@ class ReadActivity : AppCompatActivity() {
             ?: throw IllegalArgumentException("Unable to open input stream from URI")
     }
 
-
-
-
-
-
-    //epub
-
-
+    // EPUB 相关操作
     fun loadEpub(): Book? {
         binding.pdfView.visibility = View.GONE
         binding.webView.visibility = View.VISIBLE
@@ -272,22 +251,6 @@ class ReadActivity : AppCompatActivity() {
             window.setDecorFitsSystemWindows(false)
         } else {
             window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-        }
-    }
-
-
-    // 读写权限
-    private fun requestPermissions() {
-        if (checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
-            return
-        }
-        if (ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.READ_EXTERNAL_STORAGE
-            ) == PackageManager.PERMISSION_DENIED) {
-            ActivityCompat.requestPermissions(
-                this, arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE), 0
-            )
         }
     }
 }
