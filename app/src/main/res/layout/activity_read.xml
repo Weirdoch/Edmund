@@ -26,29 +26,35 @@
 <!--        android:visibility="gone"-->
 <!--        android:id="@+id/imageView"/>-->
 
-    <LinearLayout
-        android:id="@+id/pdfView"
+<!--    <LinearLayout-->
+<!--        android:id="@+id/pdfView"-->
+<!--        android:layout_width="match_parent"-->
+<!--        android:layout_height="match_parent"-->
+<!--        android:visibility="gone">-->
+
+<!--        <ImageView-->
+<!--            android:layout_width="0dp"-->
+<!--            android:layout_height="match_parent"-->
+<!--            android:layout_weight="1"-->
+<!--            android:id="@+id/imageView1"-->
+<!--            android:scaleType="fitXY"-->
+<!--            android:adjustViewBounds="true" />-->
+
+<!--        <ImageView-->
+<!--            android:layout_width="0dp"-->
+<!--            android:layout_height="match_parent"-->
+<!--            android:layout_weight="1"-->
+<!--            android:id="@+id/imageView2"-->
+<!--            android:scaleType="fitXY"-->
+<!--            android:adjustViewBounds="true" />-->
+
+<!--    </LinearLayout>-->
+
+    <androidx.viewpager2.widget.ViewPager2
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:visibility="gone">
-
-        <ImageView
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:id="@+id/imageView1"
-            android:scaleType="fitXY"
-            android:adjustViewBounds="true" />
-
-        <ImageView
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:id="@+id/imageView2"
-            android:scaleType="fitXY"
-            android:adjustViewBounds="true" />
-
-    </LinearLayout>
+        android:id="@+id/pdfView"
+        android:visibility="gone" />
 
     <com.example.edmund.widget.CustomWebView
         android:id="@+id/webView"
