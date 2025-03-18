@@ -80,13 +80,13 @@ dependencies {
     ksp("androidx.hilt:hilt-compiler:1.2.0")
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
 
-// https://mvnrepository.com/artifact/nl.siegmann.epublib/epublib-core
     implementation("nl.siegmann.epublib:epublib-core:3.1"){
         exclude(group = "xmlpull", module = "xmlpull")
     }
-//    implementation("com.github.bbokhy:epub3-android:1.0.0")
-//    implementation("com.folioreader:folioreader:0.5.4")
 
     implementation("org.jsoup:jsoup:1.14.3")
-//    implementation("com.artifex.mupdf:mupdf-android:1.19.0")
+
+    implementation("com.github.bumptech.glide:glide:4.12.0")
+    ksp("com.github.bumptech.glide:compiler:4.12.0")
+
 }

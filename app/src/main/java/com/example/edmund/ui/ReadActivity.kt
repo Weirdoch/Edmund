@@ -5,31 +5,23 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.ParcelFileDescriptor
-import android.util.Log
-import android.view.GestureDetector
-import android.view.MotionEvent
 import android.view.View
 import android.webkit.WebView
 import androidx.appcompat.app.AppCompatActivity
+import com.example.edmund.Application
 import com.example.edmund.data.dto.BookEntity
 import com.example.edmund.data.parse.PdfCacheManager
 import com.example.edmund.databinding.ActivityReadBinding
 import com.example.edmund.ui.adapter.PdfPageAdapter
-import com.github.barteksc.pdfviewer.PDFView
 import com.shockwave.pdfium.PdfDocument
 import com.shockwave.pdfium.PdfiumCore
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import nl.siegmann.epublib.domain.Book
 import nl.siegmann.epublib.epub.EpubReader
 import java.io.IOException
 import java.io.InputStream
 import kotlin.math.abs
 
-@AndroidEntryPoint
 class ReadActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityReadBinding
@@ -51,9 +43,6 @@ class ReadActivity : AppCompatActivity() {
     private var width = 0
     private var height = 0
 
-//    private val gestureDetector: GestureDetector by lazy {
-//        GestureDetector(this, GestureListener())
-//    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -95,7 +84,7 @@ class ReadActivity : AppCompatActivity() {
     }
 
     private fun initializePdfReader() {
-        pdfiumCore = PdfiumCore(this)
+        pdfiumCore = Application.pdfiumCore!!
         pdfDocument = pdfiumCore.newDocument(getFileDescriptorFromUri(uri))
         totalPageCount = pdfiumCore.getPageCount(pdfDocument)
 
@@ -107,101 +96,7 @@ class ReadActivity : AppCompatActivity() {
         pdfCacheManager = PdfCacheManager(pdfiumCore, pdfDocument, totalPageCount)
     }
 
-//    override fun onTouchEvent(event: MotionEvent): Boolean {
-//        // 让 GestureDetector 处理触摸事件
-//        gestureDetector.onTouchEvent(event)
-//        return super.onTouchEvent(event)
-//    }
 
-//    // 通过手势检测进行翻页
-//    inner class GestureListener : GestureDetector.SimpleOnGestureListener() {
-//
-//        override fun onFling(
-//            e1: MotionEvent?,
-//            e2: MotionEvent,
-//            velocityX: Float,
-//            velocityY: Float
-//        ): Boolean {
-//            // 判断左右滑动的手势
-//            if (e1 != null) {
-//                if (abs(e2.x - e1.x) > 80 && abs(velocityX) > 800) {
-//                    // 如果是右滑动 (前一页)
-//                    if (e2.x > e1.x) {
-//                        previousPage()
-//                    }
-//                    // 如果是左滑动 (下一页)
-//                    else {
-//                        nextPage()
-//                    }
-//                    return true
-//                }
-//            }
-//            return false
-//        }
-//
-//    }
-
-    // 渲染当前页和下一页
-//    private fun renderPages(pageIndex: Int) {
-//        val imageView1 = binding.imageView1
-//        val imageView2 = binding.imageView2
-//        // 异步渲染页面，避免阻塞 UI 线程
-//        GlobalScope.launch(Dispatchers.IO) {
-//            try {
-//
-//                val bitmap1 = pdfCacheManager.getPageBitmap(pageIndex)
-//                val bitmap2 = if (pageIndex + 1 < totalPageCount) {
-//                    val tmp = pdfCacheManager.getPageBitmap(pageIndex + 1)
-//                    if (!pdfCacheManager.hasPage(pageIndex + 2)) {
-//                        Thread {
-//                            // 这个代码块将在新线程中执行
-//                            Log.d("PdfCacheManager", "预缓存 ${pageIndex + 1}")
-//                            pdfCacheManager.cacheNextPages(pageIndex + 1)
-//                        }.start()
-//                    }
-//                    tmp
-//                } else {
-//                    null
-//                }
-//                withContext(Dispatchers.Main) {
-//                    imageView1.setImageBitmap(bitmap1)
-//                    // 渲染下一页
-//                    if (bitmap2 != null) imageView2.setImageBitmap(bitmap2)
-//
-//                }
-//            } catch (e: Exception) {
-//                e.printStackTrace()
-//            }
-//        }
-//    }
-//
-//    // 显示上一页
-//    private fun previousPage() {
-//        if (currentPage > 0) {
-//            currentPage -= pageStep
-//            if (currentPage < 0) currentPage = 0
-//            renderPages(currentPage)
-//        }
-//    }
-//
-//    // 显示下一页
-//    private fun nextPage() {
-//        if (currentPage + pageStep < totalPageCount) {
-//            currentPage += pageStep
-//            renderPages(currentPage)
-//        }
-//    }
-
-    private fun getFileDescriptorFromUri(uri: Uri): ParcelFileDescriptor {
-        val resolver: ContentResolver = contentResolver
-        return resolver.openFileDescriptor(uri, "r") ?: throw IOException("Unable to open file descriptor for Uri: $uri")
-    }
-
-    private fun getInputStreamFromUri(uri: Uri): InputStream {
-        val contentResolver: ContentResolver = applicationContext.contentResolver
-        return contentResolver.openInputStream(uri)
-            ?: throw IllegalArgumentException("Unable to open input stream from URI")
-    }
 
     // EPUB 相关操作
     fun loadEpub(): Book? {
@@ -247,6 +142,8 @@ class ReadActivity : AppCompatActivity() {
     private fun loadMoreContent(webView: WebView, book: Book) {
         val toc = book.tableOfContents.tocReferences
 
+
+
         // 如果当前章节索引未到达最后，继续加载后续章节
         if (currentPage < toc.size) {
             val chaptersToLoad = toc.subList(currentPage, minOf(currentPage + 3, toc.size))
@@ -269,5 +166,19 @@ class ReadActivity : AppCompatActivity() {
         } else {
             window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
         }
+    }
+
+
+    //URI PARSE
+
+    private fun getFileDescriptorFromUri(uri: Uri): ParcelFileDescriptor {
+        val resolver: ContentResolver = contentResolver
+        return resolver.openFileDescriptor(uri, "r") ?: throw IOException("Unable to open file descriptor for Uri: $uri")
+    }
+
+    private fun getInputStreamFromUri(uri: Uri): InputStream {
+        val contentResolver: ContentResolver = applicationContext.contentResolver
+        return contentResolver.openInputStream(uri)
+            ?: throw IllegalArgumentException("Unable to open input stream from URI")
     }
 }

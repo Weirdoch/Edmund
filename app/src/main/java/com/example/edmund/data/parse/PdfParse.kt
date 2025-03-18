@@ -6,83 +6,83 @@ import android.graphics.Bitmap
 import android.graphics.pdf.PdfRenderer
 import android.net.Uri
 import android.os.ParcelFileDescriptor
-import android.util.Log
-import android.view.View
-import android.widget.Toast
-import com.example.edmund.data.dto.BookEntity
-import com.example.edmund.databinding.ActivityReadBinding
-import com.example.edmund.ui.ReadActivity
-import com.github.barteksc.pdfviewer.util.FitPolicy
-import java.io.IOException
 import java.io.InputStream
-import javax.inject.Inject
+import com.shockwave.pdfium.PdfiumCore
+import java.io.File
+import java.io.FileInputStream
+import java.io.IOException
 
+class PdfParser(private val context: Context, private val pdfiumCore: PdfiumCore) {
 
-class PdfParse @Inject constructor() {
-
-
-    private var currentPage = 0
-
-
-    fun loadPdf(binding: ActivityReadBinding, inputStream: InputStream, pdfCache: PdfCache, applicationContext: Context, uri: Uri) {
-        binding.pdfView.visibility = View.VISIBLE
-        binding.webView.visibility = View.GONE
-
-        //预加载设置
-
-    }
-
-    fun cacheAdjacentPages(
-        currentPage: Int,
-        inputStream: InputStream,
-        cache: PdfCache,
-        applicationContext: Context,
-        uri: Uri
-    ) {
-        // 缓存当前页和后两页
-        for (pageIndex in currentPage..currentPage + 5) {
-            if (pageIndex >= 0) {
-                val cachedBitmap = cache.getPage(pageIndex)
-                if (cachedBitmap == null) {
-                    // 渲染该页面并缓存
-                    val renderedBitmap = renderPageToBitmap(inputStream, pageIndex, applicationContext, uri)
-                    if (renderedBitmap != null) {
-                        cache.putPage(pageIndex, renderedBitmap)
-                    }
-                }
-            }
-        }
-    }
-
-    fun renderPageToBitmap(inputStream: InputStream, pageIndex: Int, applicationContext: Context, uri: Uri): Bitmap? {
-        // 使用 PdfRenderer 或 PdfView 渲染页面为 Bitmap
-        if (pageIndex < 0) {
-            return null
-        }
+    /**
+     * 提取PDF文件的元数据（例如标题、作者）
+     */
+    fun extractMetadata(uri: Uri): Map<String, String?> {
+        val metadata = mutableMapOf<String, String?>()
         try {
-            val fileDescriptor = getParcelFileDescriptorFromUri(applicationContext, uri)
-            val renderer = PdfRenderer(fileDescriptor!!)
-            val page = renderer.openPage(pageIndex)
+            // 打开 PDF 文件
+            val document = pdfiumCore.newDocument(getFileDescriptorFromUri(uri))
+            val documentMeta = pdfiumCore.getDocumentMeta(document)
 
-            // 创建 Bitmap 并渲染页面
-            val bitmap = Bitmap.createBitmap(page.width, page.height, Bitmap.Config.ARGB_8888)
-            page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-            page.close()
-            renderer.close()
-            return bitmap
+            // 获取 PDF 文档的元数据
+            val title = documentMeta.title
+            val author = documentMeta.author
+            val subject = documentMeta.subject
+
+            // 保存元数据
+            metadata["Title"] = title
+            metadata["Author"] = author
+            metadata["Subject"] = subject
+
+            // 关闭文档
+            pdfiumCore.closeDocument(document)
         } catch (e: Exception) {
-            Log.e("PDF", "Error rendering page $pageIndex", e)
-            return null
+            e.printStackTrace()
         }
+        return metadata
     }
 
-    // 获取 ParcelFileDescriptor
-    fun getParcelFileDescriptorFromUri(context: Context, uri: Uri): ParcelFileDescriptor? {
+    /**
+     * 提取PDF文件的封面图
+     */
+    fun extractCoverImage(uri: Uri): Bitmap? {
         return try {
-            context.contentResolver.openFileDescriptor(uri, "r") // "r" 表示只读模式
-        } catch (e: IOException) {
-            Log.e("PDF", "Error opening file descriptor for URI: $uri", e)
+            // 打开 PDF 文件
+            val document = pdfiumCore.newDocument(getFileDescriptorFromUri(uri))
+
+            // 获取 PDF 的第一页
+            val pageCount = pdfiumCore.getPageCount(document)
+            if (pageCount > 0) {
+                // 只提取第一页作为封面
+                val page = pdfiumCore.openPage(document, 0)
+
+                // 设置渲染的 Bitmap 大小
+                val width = pdfiumCore.getPageWidth(document, 0)
+                val height = pdfiumCore.getPageWidth(document, 0)
+
+                // 创建位图
+                val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565)
+
+                // 渲染第一页到位图
+                pdfiumCore.renderPageBitmap(document, bitmap, 0, 0, 0, width, height)
+
+                // 关闭文档
+                pdfiumCore.closeDocument(document)
+
+                bitmap
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
             null
         }
     }
+
+    private fun getFileDescriptorFromUri(uri: Uri): ParcelFileDescriptor {
+        val resolver: ContentResolver = context.contentResolver
+        return resolver.openFileDescriptor(uri, "r") ?: throw IOException("Unable to open file descriptor for Uri: $uri")
+    }
+
 }
+

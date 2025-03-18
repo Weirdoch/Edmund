@@ -31,21 +31,19 @@ object EpubParse {
     }
 
     // 获取 EPUB 的元数据信息
-    fun getBookInfo(book: Book): String? {
-        return try {
-            val metadata: Metadata = book.metadata
-            """
-                作者：${metadata.authors.getOrNull(0) ?: "未知"}
-                出版社：${metadata.publishers.getOrNull(0) ?: "未知"}
-                出版时间：${metadata.dates.getOrNull(0)?.value ?: "未知"}
-                书名：${metadata.titles.getOrNull(0) ?: "未知"}
-                简介：${metadata.descriptions.getOrNull(0) ?: "暂无简介"}
-                语言：${metadata.language ?: "未知"}
-            """.trimIndent()
+    fun getBookInfo(book: Book): Map<String, String?> {
+        val metadata = mutableMapOf<String, String?>()
+        try {
+            metadata["Author"] = book.metadata.authors.getOrNull(0)?.toString()
+            metadata["Publisher"] = book.metadata.publishers.getOrNull(0)
+            metadata["Publication Date"] = book.metadata.dates.getOrNull(0)?.value
+            metadata["Title"] = book.metadata.titles.getOrNull(0)
+            metadata["Description"] = book.metadata.descriptions.getOrNull(0)
+            metadata["Language"] = book.metadata.language.getOrNull(0)?.toString()
         } catch (e: Exception) {
             Log.e(TAG, "Error getting book info", e)
-            null
         }
+        return metadata
     }
 
     // 获取封面图，如果没有封面图则返回 null

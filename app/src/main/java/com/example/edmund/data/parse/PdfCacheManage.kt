@@ -14,7 +14,7 @@ class PdfCacheManager (
     val totalPageCount: Int
 ) {
 
-    private val pdfCache: LruCache<Int, Bitmap> = LruCache(20) // 高清图像缓存
+    private val pdfCache: LruCache<Int, Bitmap> = LruCache(10) // 高清图像缓存
     private val emptyBitmap: Bitmap = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
     private var height = 0
     private var width = 0
@@ -71,12 +71,14 @@ class PdfCacheManager (
             return emptyBitmap
         }
 
+        pdfCache[pageIndex]?.let {
+            return it
+        }
         synchronized(lock) {
             // 再次检查以防其他线程已经创建了该页面缓存
             pdfCache[pageIndex]?.let {
                 return it
             }
-
             val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565)
             pdfiumCore.openPage(pdfDocument, pageIndex)
             pdfiumCore.renderPageBitmap(pdfDocument, bitmap, pageIndex, 0, 0, width, height)

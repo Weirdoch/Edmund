@@ -5,6 +5,8 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
+import com.example.edmund.R
 import com.example.edmund.data.dto.BookEntity
 import com.example.edmund.databinding.ItemLibraryBinding
 
@@ -12,6 +14,7 @@ class LibraryAdapter : ListAdapter<BookEntity, LibraryAdapter.LibraryViewHolder>
 
     private var onItemClickListener: ((BookEntity) -> Unit)? = null
     private var onItemLongClickListener: ((BookEntity, Int) -> Unit)? = null
+
 
     fun setOnItemClickListener(listener: (BookEntity) -> Unit) {
         onItemClickListener = listener
@@ -34,7 +37,8 @@ class LibraryAdapter : ListAdapter<BookEntity, LibraryAdapter.LibraryViewHolder>
     inner class LibraryViewHolder(private val binding: ItemLibraryBinding) : RecyclerView.ViewHolder(binding.root) {
         fun bind(book: BookEntity, position: Int) {
             binding.bookTitle.text = book.title
-            binding.bookAuthor.text = book.author ?: "未知作者"
+            binding.bookAuthor.text = book.author
+
 
             binding.root.setOnClickListener {
                 onItemClickListener?.invoke(book)

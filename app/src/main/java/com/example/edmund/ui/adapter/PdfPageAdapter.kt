@@ -6,10 +6,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
-import androidx.fragment.app.Fragment
-import androidx.fragment.app.FragmentActivity
 import androidx.recyclerview.widget.RecyclerView
-import androidx.viewpager2.adapter.FragmentStateAdapter
 import com.example.edmund.R
 import com.example.edmund.data.parse.PdfCacheManager
 import kotlinx.coroutines.Dispatchers
@@ -68,21 +65,6 @@ class PdfPageAdapter(
             holder.imageViewLeft.setImageBitmap(cachedData.first)
             holder.imageViewRight.setImageBitmap(cachedData.second)
         }
-//        val (leftBitmap, rightBitmap) = loadedPages[position]
-//            ?: run {
-//                val leftBitmap = pdfCacheManager.getLeftPageBitmap(position)
-//                val rightBitmap = pdfCacheManager.getRightPageBitmap(position)
-//
-//                // 将页面数据缓存
-//                loadedPages[position] = Pair(leftBitmap, rightBitmap)
-//                leftBitmap to rightBitmap
-//            }
-//
-//        Log.d("PdfPageAdapter", "Loaded bitmaps for position $position: leftBitmap=$leftBitmap, rightBitmap=$rightBitmap")
-//
-//        // 设置 imageView 的图片
-//        holder.imageViewLeft.setImageBitmap(leftBitmap)
-//        holder.imageViewRight.setImageBitmap(rightBitmap)
     }
 
     override fun getItemCount(): Int {
